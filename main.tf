@@ -14,13 +14,13 @@ terraform {
   }
   required_version = ">= 1.1.0"
 
-  cloud {
-    organization = "REPLACE_ME"
-
-    workspaces {
-      name = "gh-actions-demo"
-    }
-  }
+  # Comment out or remove the cloud block for this lab since we're not using Terraform Cloud
+  # cloud {
+  #   organization = "REPLACE_ME"
+  #   workspaces {
+  #     name = "gh-actions-demo"
+  #   }
+  # }
 }
 
 provider "aws" {
@@ -49,9 +49,18 @@ resource "aws_instance" "web" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t2.micro"
   vpc_security_group_ids = [aws_security_group.web-sg.id]
+  
+  # Security fix 1: Encrypted root volume
   root_block_device {
     encrypted = true  
   }
+  
+  # Security fix 2: IMDS token requirement
+  metadata_options {
+    http_tokens   = "required"  # Requires session tokens for instance metadata
+    http_endpoint = "enabled"   # Keep IMDS enabled but secure
+  }
+  
   user_data = <<-EOF
               #!/bin/bash
               apt-get update
@@ -62,16 +71,24 @@ resource "aws_instance" "web" {
               EOF
 }
 
-resource "aws_security_group" "allow_ssh" {
-  name        = "allow_ssh"
-  description = "Allow SSH inbound traffic"
+resource "aws_security_group" "web-sg" {
+  name        = "${random_pet.sg.id}-sg"
+  description = "Allow HTTP and SSH traffic"
 
   ingress {
-    description = "SSH from specific IP"
+    description = "HTTP"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["192.168.1.1/32"] # Replace with your IP for real use, or use a placeholder
+    cidr_blocks = ["0.0.0.0/0"]  # In real use, restrict this to your IP
   }
 
   egress {
@@ -79,6 +96,10 @@ resource "aws_security_group" "allow_ssh" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${random_pet.sg.id}-sg"
   }
 }
 
