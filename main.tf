@@ -60,15 +60,18 @@ resource "aws_instance" "web" {
               EOF
 }
 
-resource "aws_security_group" "web-sg" {
-  name = "${random_pet.sg.id}-sg"
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh"
+  description = "Allow SSH inbound traffic"
+
   ingress {
-    from_port   = 8080
-    to_port     = 8080
+    description = "SSH from specific IP"
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["192.168.1.1/32"] # Replace with your IP for real use, or use a placeholder
   }
-  // connectivity to ubuntu mirrors is required to run `apt-get update` and `apt-get install apache2`
+
   egress {
     from_port   = 0
     to_port     = 0
