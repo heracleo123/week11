@@ -13,14 +13,6 @@ terraform {
     }
   }
   required_version = ">= 1.1.0"
-
-  # Comment out or remove the cloud block for this lab since we're not using Terraform Cloud
-  # cloud {
-  #   organization = "REPLACE_ME"
-  #   workspaces {
-  #     name = "gh-actions-demo"
-  #   }
-  # }
 }
 
 provider "aws" {
@@ -57,8 +49,8 @@ resource "aws_instance" "web" {
   
   # Security fix 2: IMDS token requirement
   metadata_options {
-    http_tokens   = "required"  # Requires session tokens for instance metadata
-    http_endpoint = "enabled"   # Keep IMDS enabled but secure
+    http_tokens   = "required"
+    http_endpoint = "enabled"
   }
   
   user_data = <<-EOF
@@ -88,13 +80,23 @@ resource "aws_security_group" "web-sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # In real use, restrict this to your IP
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # SECURITY FIX 3: Restricted egress traffic
+  egress {
+    description = "HTTPS outbound"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "HTTP outbound"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
